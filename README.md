@@ -1,11 +1,12 @@
 # Shazam Forever
+### This is vibe-coded. Not a single line in this repo was written by a human being. A human is writing some footnotes to this readme though lol
 
 A desktop application that continuously listens to and identifies music playing in your environment using the Shazam API.
 
 ## Features
 
 - Continuous music recognition
-- Beautiful UI with album art display
+- Beautiful UI with album art display [^lol]
 - Song history tracking
 - Daily song history in markdown format
 - Caching system for recent recordings
@@ -16,11 +17,11 @@ A desktop application that continuously listens to and identifies music playing 
 
 - Python 3.8 or higher
 - PyQt6
-- PortAudio (for sounddevice)
+- PortAudio (for sounddevice) [^I'm pretty sure ffmpeg is necessary because i had to brew install that as well at some point but i don't think the ai caught that move]
 
 ## Installation
 
-1. Install PortAudio (required for sounddevice):
+1. Install PortAudio (required for sounddevice): [^actually I'm not sure this is necessary...]
 
 ```bash
 brew install portaudio
@@ -32,11 +33,11 @@ brew install portaudio
 pip install -r requirements.txt
 ```
 
-3. Install the custom ShazamAPI package (with English locale):
+3. Install the custom ShazamAPI package (with English locale): [^this is because the ShazamAPI i guess is hardcoded as russian in the original repo]
 
 ```bash
 cd custom_shazam_api
-pip install -e .
+pip install -e . [^i dont think i did this...]
 cd ..
 ```
 
@@ -69,4 +70,4 @@ python shazam_forever.py
 - Make sure your microphone has permission to access audio input
 - The application needs to be running to identify songs
 - Internet connection is required for song recognition
-- Network microphones are supported with automatic reconnection
+- Network microphones are supported with automatic reconnection [^this is a lie, i think]
