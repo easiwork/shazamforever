@@ -2,5 +2,4 @@ PyQt6==6.9.0
 requests==2.31.0
 sounddevice==0.4.6
 numpy==1.26.3
-ShazamAPI==0.0.2
 soundfile==0.12.1 

@@ -806,8 +806,11 @@ class ShazamApp(QMainWindow):
             QMessageBox.warning(self, "Error", 
                               f"Failed to open history file: {str(e)}")
 
-if __name__ == '__main__':
+def main():
     app = QApplication(sys.argv)
     window = ShazamApp()
     window.show()
-    sys.exit(app.exec()) 
+    sys.exit(app.exec())
+
+if __name__ == '__main__':
+    main() 
