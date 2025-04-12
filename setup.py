@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "PyQt6>=6.9.0",
-        "requests>=2.31.0",
+        "requests>=2.32.2",
         "sounddevice>=0.4.6",
         "numpy>=1.26.3",
         "soundfile>=0.12.1",
