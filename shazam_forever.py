@@ -658,7 +658,8 @@ class ShazamApp(QMainWindow):
             # Format the timestamp
             try:
                 dt = datetime.strptime(song['timestamp'], "%Y%m%d_%H%M%S")
-                time_str = dt.strftime("%H:%M:%S")
+                # Include date in the timestamp display
+                time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
             except:
                 time_str = "Unknown time"
                 
@@ -719,8 +720,8 @@ class ShazamApp(QMainWindow):
                 for line in content.split('\n'):
                     if line.startswith('- '):
                         # Extract song info from the line
-                        # Format: - [Song Title by Artist](uri) at [HH:MM]
-                        match = re.match(r'- \[(.*?) by (.*?)\]\((.*?)\) at \[(\d{2}:\d{2})\]', line)
+                        # Format: - [Song Title by Artist](uri) at [YYYY-MM-DD HH:MM]
+                        match = re.match(r'- \[(.*?) by (.*?)\]\((.*?)\) at \[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\]', line)
                         if match:
                             title, artist, uri, time_str = match.groups()
                             # Create a song entry
@@ -730,7 +731,7 @@ class ShazamApp(QMainWindow):
                                 'genre': 'Unknown Genre',  # We don't store genre in the markdown
                                 'album': 'Unknown Album',  # We don't store album in the markdown
                                 'cover_art_url': '',  # We don't store cover art URL in the markdown
-                                'timestamp': f"{self.current_date.replace('-', '')}_{time_str.replace(':', '')}00",
+                                'timestamp': time_str.replace('-', '').replace(' ', '_') + '00',
                                 'spotify_uri': uri if 'spotify:' in uri else None  # Only store actual Spotify URIs
                             }
                             songs.append(song_entry)
@@ -757,14 +758,15 @@ class ShazamApp(QMainWindow):
                 self.log_message(f"New day detected, creating new history file: {self.daily_history_file}")
             
             # Create the markdown content
-            content = f"# Shazam History for {self.current_date}\n\n"
+            content = f"# Scrobbles for {self.current_date}\n\n"
             
             # Add each song to the markdown
             for song in self.song_history:
                 # Format the timestamp
                 try:
                     dt = datetime.strptime(song['timestamp'], "%Y%m%d_%H%M%S")
-                    time_str = dt.strftime("%H:%M")
+                    # Include date in the timestamp display
+                    time_str = dt.strftime("%Y-%m-%d %H:%M")
                 except:
                     time_str = "Unknown time"
                 
