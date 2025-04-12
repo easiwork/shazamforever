@@ -1,0 +1,7 @@
+README.md
+setup.py
+custom_shazam_api.egg-info/PKG-INFO
+custom_shazam_api.egg-info/SOURCES.txt
+custom_shazam_api.egg-info/dependency_links.txt
+custom_shazam_api.egg-info/requires.txt
+custom_shazam_api.egg-info/top_level.txt

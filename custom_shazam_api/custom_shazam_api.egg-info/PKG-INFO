@@ -1,0 +1,56 @@
+Metadata-Version: 2.4
+Name: custom-shazam-api
+Version: 0.0.1
+Summary: A modified version of ShazamAPI that defaults to English locale
+Home-page: https://github.com/yourusername/custom-shazam-api
+Author: Your Name
+Author-email: your.email@example.com
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+Requires-Dist: numpy
+Requires-Dist: pydub
+Requires-Dist: requests
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# Custom ShazamAPI
+
+A modified version of the ShazamAPI Python package that defaults to English locale (en-US) instead of Russian.
+
+## Changes
+
+- Changed default language from 'ru' to 'en-US'
+- Changed timezone from 'Europe/Moscow' to 'America/New_York'
+- Updated API URL to use English locale
+
+## Installation
+
+```bash
+pip install -e .
+```
+
+## Usage
+
+Same as the original ShazamAPI package, but with English responses by default.
+
+```python
+from custom_shazam_api import Shazam
+
+# Use as normal
+shazam = Shazam(audio_bytes)
+recognize_generator = shazam.recognizeSong()
+```
+
+## License
+
+MIT
