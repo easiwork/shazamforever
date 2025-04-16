@@ -299,9 +299,6 @@ class ShazamApp(QMainWindow):
             devices = sd.query_devices()
             print(f"Found audio devices: {devices}")
             
-            # Store current selection if any
-            current_device_name = self.device_combo.currentText() if self.device_combo.count() > 0 else None
-            
             # Clear the combo box
             self.device_combo.clear()
             self.input_devices = []
@@ -312,18 +309,24 @@ class ShazamApp(QMainWindow):
                     self.input_devices.append(device)
                     device_name = f"{device['name']} ({device['index']})"
                     self.device_combo.addItem(device_name)
-                    print(f"Added input device: {device_name}")
+                    print(f"Added input device: {device_name} (default: {device.get('isdefault', False)})")
             
             if self.input_devices:
-                # Try to restore previous selection
-                if current_device_name:
-                    index = self.device_combo.findText(current_device_name)
-                    if index >= 0:
-                        self.device_combo.setCurrentIndex(index)
-                    else:
-                        self.device_combo.setCurrentIndex(0)
+                # Try to find the default input device
+                default_index = -1
+                for i, device in enumerate(self.input_devices):
+                    # Check both isdefault and name for built-in microphone
+                    if device.get('isdefault', False) or "MacBook Pro Microphone" in device['name']:
+                        default_index = i
+                        break
+                
+                # If default device found, select it; otherwise use the first device
+                if default_index >= 0:
+                    self.device_combo.setCurrentIndex(default_index)
+                    print(f"Selected default device: {self.input_devices[default_index]['name']}")
                 else:
                     self.device_combo.setCurrentIndex(0)
+                    print(f"No default device found, using first device: {self.input_devices[0]['name']}")
                 
                 self.device_changed()  # Update the selected device
                 self.log_message("Audio devices refreshed successfully")
