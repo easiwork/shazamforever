@@ -1,10 +1,10 @@
-from pydub import AudioSegment
 from io import BytesIO
 import requests
 import uuid
 import time
 import json
-
+import soundfile as sf
+import numpy as np
 
 from .algorithm import SignatureGenerator
 from .signature_format import DecodedMessage
@@ -31,7 +31,6 @@ class Shazam:
         self.audio = self.normalizateAudioData(self.songData)
         signatureGenerator = self.createSignatureGenerator(self.audio)
         while True:
-        
             signature = signatureGenerator.get_next_signature()
             if not signature:
                 break
@@ -59,18 +58,35 @@ class Shazam:
         )
         return r.json()
     
-    def normalizateAudioData(self, songData: bytes) -> AudioSegment:
-        audio = AudioSegment.from_file(BytesIO(songData))
+    def normalizateAudioData(self, songData: bytes) -> np.ndarray:
+        # Read audio data using soundfile
+        with BytesIO(songData) as audio_file:
+            audio_data, sample_rate = sf.read(audio_file)
+            
+            # Convert to mono if stereo
+            if len(audio_data.shape) > 1:
+                audio_data = np.mean(audio_data, axis=1)
+            
+            # Resample to 16kHz if needed
+            if sample_rate != 16000:
+                # Simple linear resampling
+                duration = len(audio_data) / sample_rate
+                new_length = int(duration * 16000)
+                audio_data = np.interp(
+                    np.linspace(0, len(audio_data), new_length),
+                    np.arange(len(audio_data)),
+                    audio_data
+                )
+            
+            # Convert to 16-bit PCM
+            audio_data = (audio_data * 32767).astype(np.int16)
+            
+            return audio_data
     
-        audio = audio.set_sample_width(2)
-        audio = audio.set_frame_rate(16000)
-        audio = audio.set_channels(1)
-        return audio
-    
-    def createSignatureGenerator(self, audio: AudioSegment) -> SignatureGenerator:
+    def createSignatureGenerator(self, audio: np.ndarray) -> SignatureGenerator:
         signature_generator = SignatureGenerator()
-        signature_generator.feed_input(audio.get_array_of_samples())
+        signature_generator.feed_input(audio.tolist())
         signature_generator.MAX_TIME_SECONDS = self.MAX_TIME_SECONDS
-        if audio.duration_seconds > 12 * 3:
-            signature_generator.samples_processed += 16000 * (int(audio.duration_seconds / 16) - 6)
+        if len(audio) > 12 * 3 * 16000:  # If longer than 36 seconds
+            signature_generator.samples_processed += 16000 * (int(len(audio) / (16 * 16000)) - 6)
         return signature_generator 

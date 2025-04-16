@@ -1,4 +1,5 @@
 # Shazam Forever
+
 ### This is vibe-coded. Not a single line in this repo was written by a human being. A human is writing some footnotes to this readme though lol
 
 A desktop application that continuously listens to and identifies music playing in your environment using the Shazam API.

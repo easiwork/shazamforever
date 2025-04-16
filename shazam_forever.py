@@ -20,6 +20,38 @@ from io import BytesIO
 import webbrowser
 import re
 import time
+from pydub.utils import which
+
+def check_microphone_permissions():
+    """Check if we have permission to access the microphone"""
+    try:
+        # Try to get device info - this will fail if we don't have permission
+        devices = sd.query_devices()
+        print(f"Available audio devices: {devices}")
+        return True
+    except Exception as e:
+        print(f"Error checking microphone permissions: {str(e)}")
+        if "Permission denied" in str(e) or "access denied" in str(e).lower():
+            return False
+        raise e
+
+# Configure pydub to use bundled ffmpeg
+def get_bundled_ffmpeg_path():
+    if getattr(sys, 'frozen', False):
+        # Running in a bundle
+        bundle_dir = os.path.dirname(sys.executable)
+        ffmpeg_path = os.path.join(bundle_dir, 'ffmpeg_binaries', 'ffmpeg')
+        ffprobe_path = os.path.join(bundle_dir, 'ffmpeg_binaries', 'ffprobe')
+    else:
+        # Running in normal Python environment
+        ffmpeg_path = which('ffmpeg')
+        ffprobe_path = which('ffprobe')
+    
+    return ffmpeg_path, ffprobe_path
+
+# Set up ffmpeg paths
+ffmpeg_path, ffprobe_path = get_bundled_ffmpeg_path()
+os.environ['PATH'] = os.path.dirname(ffmpeg_path) + os.pathsep + os.environ['PATH']
 
 class AudioRecorderThread(QThread):
     finished = pyqtSignal(object)  # Signal to emit when recording is done
@@ -40,6 +72,11 @@ class AudioRecorderThread(QThread):
         retry_count = 0
         while retry_count < self.max_retries:
             try:
+                if not check_microphone_permissions():
+                    self.error.emit("Microphone permission denied. Please grant microphone access in System Preferences.")
+                    return
+                
+                print(f"Starting recording with device: {self.device}, sample rate: {self.sample_rate}, channels: {self.channels}")
                 self.is_recording = True
                 
                 # Record audio
@@ -58,15 +95,24 @@ class AudioRecorderThread(QThread):
                 sd.wait()  # Wait until recording is finished
                 self.is_recording = False
                 
+                print(f"Recording completed, shape: {recording.shape}")
+                
                 # Save the recording to a temporary file
                 with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
                     sf.write(temp_file.name, recording, self.sample_rate)
+                    print(f"Saved recording to: {temp_file.name}")
                     self.finished.emit(temp_file.name)
                 return  # Success, exit the retry loop
                     
             except Exception as e:
                 retry_count += 1
                 error_msg = str(e)
+                print(f"Recording error (attempt {retry_count}/{self.max_retries}): {error_msg}")
+                
+                # Check if it's a permission error
+                if "Permission denied" in error_msg or "access denied" in error_msg.lower():
+                    self.error.emit("Microphone permission denied. Please grant microphone access in System Preferences.")
+                    return
                 
                 # Check if it's a network-related error
                 if any(err in error_msg.lower() for err in ['network', 'connection', 'timeout', 'hardware not running']):
@@ -114,7 +160,16 @@ class ShazamApp(QMainWindow):
         self.daily_history_file = os.path.join(self.daily_history_dir, f"{self.current_date}.md")
         
         # Setup logging
-        self.logging_enabled = False  # Logs disabled by default
+        self.logging_enabled = True  # Enable logging by default for debugging
+        
+        # Setup UI first
+        self.setup_ui()
+        
+        # Check microphone permissions at startup
+        if not check_microphone_permissions():
+            QMessageBox.warning(self, "Microphone Access Required",
+                              "Shazam Forever needs access to your microphone to identify songs.\n\n"
+                              "Please grant microphone access in System Preferences > Security & Privacy > Privacy > Microphone")
         
         # Load today's history if it exists
         self.load_daily_history()
@@ -126,8 +181,6 @@ class ShazamApp(QMainWindow):
         # Setup network manager for downloading images
         self.network_manager = QNetworkAccessManager()
         
-        # Setup UI first
-        self.setup_ui()
         self.is_listening = False
         
         # Initialize audio devices after UI setup
@@ -236,8 +289,15 @@ class ShazamApp(QMainWindow):
         
     def refresh_devices(self):
         try:
+            if not check_microphone_permissions():
+                QMessageBox.warning(self, "Microphone Access Required",
+                                  "Shazam Forever needs access to your microphone to identify songs.\n\n"
+                                  "Please grant microphone access in System Preferences > Security & Privacy > Privacy > Microphone")
+                return
+            
             # Get all devices
             devices = sd.query_devices()
+            print(f"Found audio devices: {devices}")
             
             # Store current selection if any
             current_device_name = self.device_combo.currentText() if self.device_combo.count() > 0 else None
@@ -252,6 +312,7 @@ class ShazamApp(QMainWindow):
                     self.input_devices.append(device)
                     device_name = f"{device['name']} ({device['index']})"
                     self.device_combo.addItem(device_name)
+                    print(f"Added input device: {device_name}")
             
             if self.input_devices:
                 # Try to restore previous selection
@@ -273,9 +334,16 @@ class ShazamApp(QMainWindow):
                                   "No audio input devices were found. Please connect a microphone.")
                 
         except Exception as e:
-            self.log_message(f"Error refreshing devices: {str(e)}")
-            QMessageBox.critical(self, "Device Error", 
-                               f"Failed to refresh audio devices: {str(e)}")
+            error_msg = str(e)
+            print(f"Error refreshing devices: {error_msg}")
+            if "Permission denied" in error_msg or "access denied" in error_msg.lower():
+                QMessageBox.warning(self, "Microphone Access Required",
+                                  "Shazam Forever needs access to your microphone to identify songs.\n\n"
+                                  "Please grant microphone access in System Preferences > Security & Privacy > Privacy > Microphone")
+            else:
+                self.log_message(f"Error refreshing devices: {error_msg}")
+                QMessageBox.critical(self, "Device Error", 
+                                   f"Failed to refresh audio devices: {error_msg}")
     
     def device_changed(self):
         if self.is_listening:
@@ -384,6 +452,7 @@ class ShazamApp(QMainWindow):
             return
             
         self.log_message("Recording audio sample...")
+        print(f"Starting recording with device: {self.input_device}")
         
         # Create and start the recorder thread
         self.recorder_thread = AudioRecorderThread(
