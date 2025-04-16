@@ -165,14 +165,14 @@ class ShazamApp(QMainWindow):
         # Setup UI first
         self.setup_ui()
         
+        # Load today's history if it exists
+        self.load_daily_history()
+        
         # Check microphone permissions at startup
         if not check_microphone_permissions():
             QMessageBox.warning(self, "Microphone Access Required",
                               "Shazam Forever needs access to your microphone to identify songs.\n\n"
                               "Please grant microphone access in System Preferences > Security & Privacy > Privacy > Microphone")
-        
-        # Load today's history if it exists
-        self.load_daily_history()
         
         # Track last identified song to prevent duplicates
         self.last_song = None
@@ -779,6 +779,10 @@ class ShazamApp(QMainWindow):
 
     def load_daily_history(self):
         """Load today's song history from the markdown file"""
+        # Update current date and file path
+        self.current_date = datetime.now().strftime("%Y-%m-%d")
+        self.daily_history_file = os.path.join(self.daily_history_dir, f"{self.current_date}.md")
+        
         if os.path.exists(self.daily_history_file):
             try:
                 with open(self.daily_history_file, 'r') as f:
@@ -789,10 +793,22 @@ class ShazamApp(QMainWindow):
                 for line in content.split('\n'):
                     if line.startswith('- '):
                         # Extract song info from the line
-                        # Format: - [Song Title by Artist](uri) at [YYYY-MM-DD HH:MM]
-                        match = re.match(r'- \[(.*?) by (.*?)\]\((.*?)\) at \[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\]', line)
+                        # Format: - [Song Title by Artist](uri) at [YYYY-MM-DD HH:MM] or [Unknown time]
+                        match = re.match(r'- \[(.*?) by (.*?)\]\((.*?)\) at \[(.*?)\]', line)
                         if match:
                             title, artist, uri, time_str = match.groups()
+                            
+                            # Handle timestamp
+                            if time_str == "Unknown time":
+                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            else:
+                                try:
+                                    dt = datetime.strptime(time_str, "%Y-%m-%d %H:%M")
+                                    timestamp = dt.strftime("%Y%m%d_%H%M%S")
+                                except ValueError:
+                                    # If parsing fails, use current time
+                                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            
                             # Create a song entry
                             song_entry = {
                                 'title': title,
@@ -800,13 +816,14 @@ class ShazamApp(QMainWindow):
                                 'genre': 'Unknown Genre',  # We don't store genre in the markdown
                                 'album': 'Unknown Album',  # We don't store album in the markdown
                                 'cover_art_url': '',  # We don't store cover art URL in the markdown
-                                'timestamp': time_str.replace('-', '').replace(' ', '_') + '00',
+                                'timestamp': timestamp,
                                 'spotify_uri': uri if 'spotify:' in uri else None  # Only store actual Spotify URIs
                             }
                             songs.append(song_entry)
                 
                 # Add to history
                 self.song_history = songs
+                self.update_history_list()  # Update the UI immediately
                 self.log_message(f"Loaded {len(songs)} songs from today's history")
             except Exception as e:
                 self.log_message(f"Error loading daily history: {str(e)}")
@@ -814,17 +831,20 @@ class ShazamApp(QMainWindow):
         else:
             self.log_message("No history file for today")
             self.song_history = []
+            self.update_history_list()  # Update the UI even if no history
             
     def save_daily_history(self):
         """Save today's song history to the markdown file"""
         try:
-            # Check if the date has changed
+            # Always use current date when saving
             current_date = datetime.now().strftime("%Y-%m-%d")
             if current_date != self.current_date:
-                # Date has changed, update the file path
+                # Date has changed, update the file path and reload history
                 self.current_date = current_date
                 self.daily_history_file = os.path.join(self.daily_history_dir, f"{self.current_date}.md")
                 self.log_message(f"New day detected, creating new history file: {self.daily_history_file}")
+                # Load any existing history for the new day
+                self.load_daily_history()
             
             # Create the markdown content
             content = f"# Scrobbles for {self.current_date}\n\n"
@@ -856,6 +876,8 @@ class ShazamApp(QMainWindow):
             self.log_message(f"Saved {len(self.song_history)} songs to today's history")
         except Exception as e:
             self.log_message(f"Error saving daily history: {str(e)}")
+            QMessageBox.warning(self, "History Error", 
+                              f"Failed to save history: {str(e)}")
 
     def view_daily_history(self):
         """Open today's history file in the default text editor"""
